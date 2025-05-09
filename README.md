@@ -60,7 +60,7 @@ We'll install bundles one by one, explaining their purpose:
    composer require form     
    ```
 
-8. **TailwindBundle** (`symfonycasts/tailwind-bundle`):
+9. **TailwindBundle** (`symfonycasts/tailwind-bundle`):
    ```bash
    composer require symfonycasts/tailwind-bundle
    ```
@@ -208,10 +208,6 @@ Edit `config/packages/vich_uploader.yaml`:
 vich_uploader:
     db_driver: orm
     mappings:
-        profile_images:
-            uri_prefix: /uploads/profile_images
-            upload_destination: '%kernel.project_dir%/public/uploads/profile_images'
-            namer: Vich\UploaderBundle\Naming\UniqidNamer
         article_images:
             uri_prefix: /uploads/article_images
             upload_destination: '%kernel.project_dir%/public/uploads/article_images'
@@ -223,10 +219,10 @@ vich_uploader:
   - `upload_destination`: Filesystem path where images are stored.
   - `namer`: Generates unique filenames to avoid conflicts.
 
-Create the upload directories:
+Create the upload directory:
 
 ```bash
-mkdir -p public/uploads/profile_images public/uploads/article_images
+mkdir -p public/uploads/article_images
 ```
 
 ### Configure LiipImagineBundle
@@ -238,12 +234,6 @@ liip_imagine:
         default:
             web_path: ~
     filter_sets:
-        profile_thumbnail:
-            filters:
-                thumbnail: { size: [50, 50], mode: inset }
-        profile_large:
-            filters:
-                thumbnail: { size: [200, 200], mode: inset }
         article_thumbnail:
             filters:
                 thumbnail: { size: [100, 100], mode: inset }
@@ -256,8 +246,6 @@ liip_imagine:
 ```
 
 - **Explanation**:
-  - `profile_thumbnail`: 50x50px for user avatars in lists.
-  - `profile_large`: 200x200px for user profile pages.
   - `article_thumbnail`: 100x100px for small previews.
   - `article_index`: 300x200px for article listings.
   - `article_page`: 600x400px for full article views.
@@ -265,7 +253,7 @@ liip_imagine:
 
 ## Image Processing Filters Guide
 
-This document provides a detailed explanation of common image processing filters, including their purpose, parameters, examples, and use cases. Each filter is part of a configuration for an image processing pipeline (e.g., ImageMagick, CMS, or custom tool). An additional useful filter is also included.
+This part provides a detailed explanation of common image processing filters, including their purpose, parameters, examples, and use cases. Each filter is part of a configuration for an image processing pipeline (e.g., ImageMagick, CMS, or custom tool). An additional useful filter is also included.
 
 ---
 
