@@ -55,6 +55,11 @@ We'll install bundles one by one, explaining their purpose:
    composer require liip/imagine-bundle
    ```
 
+8. **Forms**:
+   ```bash
+   composer require form     
+   ```
+
 8. **TailwindBundle** (`symfonycasts/tailwind-bundle`):
    ```bash
    composer require symfonycasts/tailwind-bundle
@@ -69,14 +74,7 @@ DATABASE_URL="mysql://user:password@127.0.0.1:3306/symfonyblog?serverVersion=8.0
 
 ## Step 2: Database Design
 
-Our blog needs two main entities: **User** (for profiles with profile images) and **Article** (with associated images). Here’s the database schema:
-
-- **User**:
-  - `id`: Integer, primary key, auto-increment
-  - `username`: Varchar(255), unique
-  - `email`: Varchar(255), unique
-  - `password`: Varchar(255)
-  - `profile_image`: Varchar(255), nullable (stores profile image filename)
+We need a main entity: **Article** (with associated images). Here’s the database schema:
 
 - **Article**:
   - `id`: Integer, primary key, auto-increment
@@ -84,9 +82,8 @@ Our blog needs two main entities: **User** (for profiles with profile images) an
   - `content`: Text
   - `image`: Varchar(255), nullable (stores article image filename)
   - `created_at`: Datetime
-  - `author_id`: Integer, foreign key referencing `User(id)`
 
-This schema supports user profiles with optional profile images and articles with optional images, linked to authors.
+This schema supports articles with optional images.
 
 ## Step 3: Create SQL Database and Entities
 
@@ -98,171 +95,13 @@ php bin/console doctrine:database:create
 or php bin/console d:d:c 
 ```
 
-### Create Entities
-Use the Maker Bundle to generate `User` and `Article` entities.
+### Create Article Entity
+Use the Maker Bundle to generate `Article` entity.
 
-#### User Entity
-```bash
-php bin/console make:user
-```
-- Name: `User`
-- Interactive mode: Follow prompts to include username, email, and password.
-- After generation, add the `profileImage` property manually.
-
-Edit `src/Entity/User.php`:
-
-```php
-<?php
-
-namespace App\Entity;
-
-use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
-use Vich\UploaderBundle\Mapping\Annotation as Vich;
-use Symfony\Component\HttpFoundation\File\File;
-use Symfony\Component\Validator\Constraints as Assert;
-
-#[ORM\Entity]
-#[Vich\Uploadable]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
-{
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    private ?int $id = null;
-
-    #[ORM\Column(length: 180, unique: true)]
-    private ?string $email = null;
-
-    #[ORM\Column]
-    private array $roles = [];
-
-    #[ORM\Column]
-    private ?string $password = null;
-
-    #[ORM\Column(length: 255, unique: true)]
-    private ?string $username = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $profileImage = null;
-
-    #[Vich\UploadableField(mapping: 'profile_images', fileNameProperty: 'profileImage')]
-    #[Assert\Image(
-        maxSize: '2M',
-        mimeTypes: ['image/jpeg', 'image/png'],
-        mimeTypesMessage: 'Please upload a valid JPEG or PNG image.'
-    )]
-    private ?File $profileImageFile = null;
-
-    #[ORM\Column(type: 'datetime', nullable: true)]
-    private ?\DateTime $updatedAt = null;
-
-    // Getters and setters...
-
-    public function getId(): ?int
-    {
-        return $this->id;
-    }
-
-    public function getEmail(): ?string
-    {
-        return $this->email;
-    }
-
-    public function setEmail(string $email): static
-    {
-        $this->email = $email;
-        return $this;
-    }
-
-    public function getUserIdentifier(): string
-    {
-        return (string) $this->email;
-    }
-
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-        $roles[] = 'ROLE_USER';
-        return array_unique($roles);
-    }
-
-    public function setRoles(array $roles): static
-    {
-        $this->roles = $roles;
-        return $this;
-    }
-
-    public function getPassword(): ?string
-    {
-        return $this->password;
-    }
-
-    public function setPassword(string $password): static
-    {
-        $this->password = $password;
-        return $this;
-    }
-
-    public function getUsername(): ?string
-    {
-        return $this->username;
-    }
-
-    public function setUsername(string $username): static
-    {
-        $this->username = $username;
-        return $this;
-    }
-
-    public function eraseCredentials(): void
-    {
-        // Clear sensitive data if needed
-    }
-
-    public function getProfileImage(): ?string
-    {
-        return $this->profileImage;
-    }
-
-    public function setProfileImage(?string $profileImage): static
-    {
-        $this->profileImage = $profileImage;
-        return $this;
-    }
-
-    public function setProfileImageFile(?File $profileImageFile = null): void
-    {
-        $this->profileImageFile = $profileImageFile;
-        if ($profileImageFile) {
-            $this->updatedAt = new \DateTime();
-        }
-    }
-
-    public function getProfileImageFile(): ?File
-    {
-        return $this->profileImageFile;
-    }
-
-    public function getUpdatedAt(): ?\DateTime
-    {
-        return $this->updated SNDarray
-    }
-
-    public function setUpdatedAt(?\DateTime $updatedAt): static
-    {
-        $this->updatedAt = $updatedAt;
-        return $this;
-    }
-}
-```
-
-#### Article Entity
 ```bash
 php bin/console make:entity Article
 ```
-Add fields: `title` (string), `content` (text), `image` (string, nullable), `createdAt` (datetime), `author` (relation to User).
+Add fields: `title` (string), `content` (text), `image_path` (string), `created_at` (datetime).
 
 Edit `src/Entity/Article.php`:
 
@@ -271,13 +110,11 @@ Edit `src/Entity/Article.php`:
 
 namespace App\Entity;
 
+use App\Repository\ArticleRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Vich\UploaderBundle\Mapping\Annotation as Vich;
-use Symfony\Component\HttpFoundation\File\File;
-use Symfony\Component\Validator\Constraints as Assert;
 
-#[ORM\Entity]
-#[Vich\Uploadable]
+#[ORM\Entity(repositoryClass: ArticleRepository::class)]
 class Article
 {
     #[ORM\Id]
@@ -288,36 +125,14 @@ class Article
     #[ORM\Column(length: 255)]
     private ?string $title = null;
 
-    #[ORM\Column(type: 'text')]
+    #[ORM\Column(type: Types::TEXT)]
     private ?string $content = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $image = null;
+    #[ORM\Column(length: 255)]
+    private ?string $image_path = null;
 
-    #[Vich\UploadableField(mapping: 'article_images', fileNameProperty: 'image')]
-    #[Assert\Image(
-        maxSize: '5M',
-        mimeTypes: ['image/jpeg', 'image/png'],
-        mimeTypesMessage: 'Please upload a valid JPEG or PNG image.'
-    )]
-    private ?File $imageFile = null;
-
-    #[ORM\Column(type: 'datetime')]
-    private ?\DateTime $createdAt = null;
-
-    #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?User $author = null;
-
-    #[ORM\Column(type: 'datetime', nullable: true)]
-    private ?\DateTime $updatedAt = null;
-
-    public function __construct()
-    {
-        $this->createdAt = new \DateTime();
-    }
-
-    // Getters and setters...
+    #[ORM\Column]
+    private ?\DateTimeImmutable $created_at = null;
 
     public function getId(): ?int
     {
@@ -332,6 +147,7 @@ class Article
     public function setTitle(string $title): static
     {
         $this->title = $title;
+
         return $this;
     }
 
@@ -343,63 +159,31 @@ class Article
     public function setContent(string $content): static
     {
         $this->content = $content;
+
         return $this;
     }
 
-    public function getImage(): ?string
+    public function getImagePath(): ?string
     {
-        return $this->image;
+        return $this->image_path;
     }
 
-    public function setImage(?string $image): static
+    public function setImagePath(string $image_path): static
     {
-        $this->image = $image;
+        $this->image_path = $image_path;
+
         return $this;
     }
 
-    public function setImageFile(?File $imageFile = null): void
+    public function getCreatedAt(): ?\DateTimeImmutable
     {
-        $this->imageFile = $imageFile;
-        if ($imageFile) {
-            $this->updatedAt = new \DateTime();
-        }
+        return $this->created_at;
     }
 
-    public function getImageFile(): ?File
+    public function setCreatedAt(\DateTimeImmutable $created_at): static
     {
-        return $this->imageFile;
-    }
+        $this->created_at = $created_at;
 
-    public function getCreatedAt(): ?\DateTime
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTime $createdAt): static
-    {
-        $this->createdAt = $createdAt;
-        return $this;
-    }
-
-    public function getAuthor(): ?User
-    {
-        return $this->author;
-    }
-
-    public function setAuthor(?User $author): static
-    {
-        $this->author = $author;
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTime
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTime $updatedAt): static
-    {
-        $this->updatedAt = $updatedAt;
         return $this;
     }
 }
@@ -415,7 +199,7 @@ php bin/console doctrine:migrations:migrate
 
 ## Step 4: Image Management with Forms
 
-This is the core of the tutorial, focusing on uploading, validating, storing, and displaying images in multiple sizes.
+This is the core of the project, focusing on uploading, validating, storing, and displaying images in multiple sizes.
 
 ### Configure VichUploaderBundle
 Edit `config/packages/vich_uploader.yaml`:
@@ -479,52 +263,214 @@ liip_imagine:
   - `article_page`: 600x400px for full article views.
   - `mode: inset`: Preserves aspect ratio, fits within specified dimensions.
 
-### Create Forms
-#### User Profile Form
-```bash
-php bin/console make:form UserType
+## Image Processing Filters Guide
+
+This document provides a detailed explanation of common image processing filters, including their purpose, parameters, examples, and use cases. Each filter is part of a configuration for an image processing pipeline (e.g., ImageMagick, CMS, or custom tool). An additional useful filter is also included.
+
+---
+
+### 1. Scales Proportionally
+
+**Filter**: `scale`
+
+- **Purpose**: Resizes an image to specific dimensions while maintaining the aspect ratio. The image is scaled to fit within the specified dimensions without stretching.
+- **Parameters**:
+  - `dim`: `[width, height]` specifying target dimensions.
+- **Behavior**: Scales the image so either width or height matches the target, adjusting the other dimension to preserve the aspect ratio. The output may not exactly match the specified dimensions but will fit within them.
+- **Example**:
+  ```yaml
+  filters:
+    scale:
+      dim: [300, 200]
+  ```
+- **Scenario**: A 600x400 image (3:2 aspect ratio) is resized to 300x200 (exact match). For a 600x600 image, scaling to `[300, 200]` results in 200x200 (height constrained to 200, width adjusted for 1:1 aspect ratio).
+- **Use Case**: Creating thumbnails for a gallery where images must fit within a 300x200 box without distortion.
+- **Visual Example**:
+  - Original: 600x400 → Scaled: 300x200.
+  - Original: 600x600 → Scaled: 200x200.
+
+---
+
+### 2. Crop a Specific Region
+
+**Filter**: `crop`
+
+- **Purpose**: Extracts a rectangular region from the image, discarding the rest.
+- **Parameters**:
+  - `start`: `[x, y]` specifying the top-left corner of the crop region.
+  - `size`: `[width, height]` specifying the dimensions of the crop region.
+- **Behavior**: Cuts out the specified region. If the crop exceeds image boundaries, it may fail or pad the output (tool-dependent).
+- **Example**:
+  ```yaml
+  filters:
+    crop:
+      start: [0, 0]
+      size: [100, 100]
+  ```
+- **Scenario**: A 500x500 image is cropped to a 100x100 square from the top-left corner, resulting in a 100x100 image.
+- **Use Case**: Isolating a specific part of an image, like a logo or a detected face.
+- **Visual Example**:
+  - Original: 500x500.
+  - Crop `[0, 0], [100, 100]`: 100x100 top-left region.
+- **Note**: Ensure the crop region fits within the image to avoid errors.
+
+---
+
+### 3. Rotate the Image
+
+**Filter**: `rotate`
+
+- **Purpose**: Rotates the image by a specified angle (in degrees).
+- **Parameters**:
+  - A value (e.g., `90`) indicating the rotation angle (clockwise).
+- **Behavior**: Rotates the image around its center. The canvas may expand, and background areas may be filled (e.g., with transparency or a solid color).
+- **Example**:
+  ```yaml
+  filters:
+    rotate: 90
+  ```
+- **Scenario**: A 400x600 portrait image is rotated 90° clockwise, resulting in a 600x400 landscape image.
+- **Use Case**: Correcting photo orientation or creating rotated versions for design.
+- **Visual Example**:
+  - Original: 400x600 portrait.
+  - Rotated 90°: 600x400 landscape.
+- **Note**: Non-90/180/270° rotations may require handling non-rectangular bounding boxes.
+
+---
+
+### 4. Removes Metadata
+
+**Filter**: `strip`
+
+- **Purpose**: Removes metadata (e.g., EXIF, ICC profiles) to reduce file size and enhance privacy.
+- **Parameters**:
+  - None (`~` in YAML indicates empty/default configuration).
+- **Behavior**: Strips all metadata (e.g., camera details, GPS) while preserving visual content.
+- **Example**:
+  ```yaml
+  filters:
+    strip: ~
+  ```
+- **Scenario**: A 2MB JPEG with EXIF data (camera, GPS) is reduced to 1.8MB by removing metadata.
+- **Use Case**: Preparing images for web upload to minimize file size and protect privacy.
+- **Visual Example**:
+  - Original: JPEG with EXIF (camera: Canon, GPS: 40.7128°N, 74.0060°W).
+  - Stripped: Same image, no metadata.
+- **Note**: Stripping metadata doesn't affect quality but may remove useful data (e.g., color profiles).
+
+---
+
+### 5. Set Image Interlacing for Better Loading on Web
+
+**Filter**: `interlace`
+
+- **Purpose**: Enables interlacing for progressive loading on web pages (low-resolution preview first, then full detail).
+- **Parameters**:
+  - `mode`: Interlacing method (e.g., `line` for JPEG/PNG, `plane` for PNG, `partition` for JPEG).
+- **Behavior**: Reorders pixel data so browsers display a coarse version before full download, improving perceived loading speed.
+- **Example**:
+  ```yaml
+  filters:
+    interlace:
+      mode: line
+  ```
+- **Scenario**: A 1920x1080 JPEG loads as a blurry preview first, refining over seconds.
+- **Use Case**: Optimizing large images for websites to improve user experience on slow connections.
+- **Visual Example**:
+  - Non-interlaced: Loads top-to-bottom, incomplete during download.
+  - Interlaced (`line`): Loads as low-res preview, gradually sharpening.
+- **Note**: Interlacing may slightly increase file size for some formats (e.g., PNG).
+
+---
+
+### 6. Resize While Maintaining Proportions
+
+**Filter**: `relative_resize`
+
+- **Purpose**: Resizes the image by a scaling factor relative to its original size, preserving the aspect ratio.
+- **Parameters**:
+  - `scale`: A float (e.g., `0.5` for 50%, `2.0` for 200%).
+- **Behavior**: Multiplies width and height by the scale factor.
+- **Example**:
+  ```yaml
+  filters:
+    relative_resize:
+      scale: 0.5
+  ```
+- **Scenario**: A 1000x800 image is scaled by `0.5`, resulting in 500x400.
+- **Use Case**: Generating smaller images for responsive web design or email attachments.
+- **Visual Example**:
+  - Original: 1000x800.
+  - Scaled (`0.5`): 500x400.
+- **Note**: Ideal for consistent scaling across multiple images.
+
+---
+
+### Additional Useful Filter: Convert Image Format
+
+**Filter**: `convert`
+
+- **Purpose**: Changes the image file format (e.g., JPEG to PNG, PNG to WebP).
+- **Parameters**:
+  - `format`: Target format (`jpeg`, `png`, `webp`, `gif`).
+  - Optional: `quality` (e.g., `80` for JPEG/WebP compression).
+- **Behavior**: Converts to the specified format, applying format-specific compression. Reduces file size, improves compatibility, or enables features like transparency.
+- **Example**:
+  ```yaml
+  filters:
+    convert:
+      format: webp
+      quality: 80
+  ```
+- **Scenario**: A 2MB PNG is converted to a 500KB WebP, maintaining quality and transparency.
+- **Use Case**: Optimizing for modern websites (WebP offers better compression) or ensuring compatibility (e.g., JPEG for email).
+- **Visual Example**:
+  - Original: 1920x1080 PNG (2MB).
+  - Converted: 1920x1080 WebP (500KB).
+- **Why It's Useful**: WebP/AVIF reduce load times; JPEG ensures compatibility.
+- **Note**: Ensure the target format supports features (e.g., JPEG lacks transparency).
+
+---
+
+### Example Pipeline
+
+Chaining filters for complex transformations:
+
+```yaml
+filters:
+  relative_resize:
+    scale: 0.5
+  crop:
+    start: [50, 50]
+    size: [200, 200]
+  rotate: 90
+  convert:
+    format: webp
+    quality: 80
+  strip: ~
+  interlace:
+    mode: line
 ```
 
-Edit `src/Form/UserType.php`:
+- **Input**: 1000x800 PNG (2MB).
+- **Steps**:
+  1. `relative_resize: 0.5` → 500x400.
+  2. `crop: [50, 50], [200, 200]` → 200x200.
+  3. `rotate: 90` → 200x200 (rotated).
+  4. `convert: webp, quality: 80` → WebP format.
+  5. `strip: ~` → Removes metadata.
+  6. `interlace: line` → Enables progressive loading.
+- **Output**: 200x200 WebP (~50KB), web-optimized.
 
-```php
-<?php
+---
 
-namespace App\Form;
+### Notes
 
-use App\Entity\User;
-use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\FileType;
-use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\OptionsResolver\OptionsResolver;
-use Vich\UploaderBundle\Form\Type\VichImageType;
+- **Order Matters**: Filter order affects results (e.g., `crop` before `resize`).
+- **Tool Dependency**: Syntax/behavior varies by library (e.g., ImageMagick, GD). Check documentation.
+- **Testing**: Test filters on sample images to verify output.
 
-class UserType extends AbstractType
-{
-    public function buildForm(FormBuilderInterface $builder, array $options): void
-    {
-        $builder
-            ->add('username')
-            ->add('email')
-            ->add('profileImageFile', VichImageType::class, [
-                'required' => false,
-                'allow_delete' => true,
-                'download_uri' => false,
-                'image_uri' => true,
-                'label' => 'Profile Image',
-            ]);
-    }
-
-    public function configureOptions(OptionsResolver $resolver): void
-    {
-        $resolver->setDefaults([
-            'data_class' => User::class,
-        ]);
-    }
-}
-```
-
-#### Article Form
+### Create Article Form
 ```bash
 php bin/console make:form ArticleType
 ```
@@ -574,72 +520,6 @@ class ArticleType extends AbstractType
   - Validation is handled by the `#[Assert\Image]` constraints in the entities.
 
 ### Create Controller and Views
-#### User Profile Controller
-```bash
-php bin/console make:controller UserController
-```
-
-Edit `src/Controller/UserController.php`:
-
-```php
-<?php
-
-namespace App\Controller;
-
-use App\Entity\User;
-use App\Form\UserType;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
-
-#[Route('/user')]
-class UserController extends AbstractController
-{
-    #[Route('/edit/{id}', name: 'user_edit')]
-    public function edit(Request $request, User $user, EntityManagerInterface $em): Response
-    {
-        $form = $this->createForm(UserType::class, $user);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $em->flush();
-            $this->addFlash('success', 'Profile updated successfully.');
-            return $this->redirectToRoute('user_edit', ['id' => $user->getId()]);
-        }
-
-        return $this->render('user/edit.html.twig', [
-            'form' => $form->createView(),
-            'user' => $user,
-        ]);
-    }
-}
-```
-
-Create `templates/user/edit.html.twig`:
-
-```twig
-{% extends 'base.html.twig' %}
-
-{% block title %}Edit Profile{% endblock %}
-
-{% block body %}
-    <h1>Edit Profile</h1>
-
-    {{ form_start(form) }}
-        {{ form_row(form.username) }}
-        {{ form_row(form.email) }}
-        {{ form_row(form.profileImageFile) }}
-        {% if user.profileImage %}
-            <img src="{{ user.profileImage|imagine_filter('profile_thumbnail') }}" alt="Profile Thumbnail">
-            <img src="{{ user.profileImage|imagine_filter('profile_large') }}" alt="Profile Large">
-        {% endif %}
-        <button type="submit" class="btn btn-primary">Save</button>
-    {{ form_end(form) %}
-{% endblock %}
-```
-
 #### Article Controller
 ```bash
 php bin/console make:controller ArticleController
@@ -667,7 +547,6 @@ class ArticleController extends AbstractController
     public function new(Request $request, EntityManagerInterface $em): Response
     {
         $article = new Article();
-        $article->setAuthor($this->getUser());
         $form = $this->createForm(ArticleType::class, $article);
         $form->handleRequest($request);
 
