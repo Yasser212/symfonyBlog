@@ -87,6 +87,7 @@ We need a main entity: **Article** (with associated images). Here’s the databa
   - `content`: Text
   - `image`: Varchar(255), nullable (stores article image filename)
   - `created_at`: Datetime
+  - `updated_at`: Datetime
 
 This schema supports articles with optional images.
 
