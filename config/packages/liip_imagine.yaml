@@ -17,12 +17,12 @@ liip_imagine:
             filters:
                 thumbnail:
                     size: [600, 400]
-                    mode: outbound
+                    mode: inset
                 strip: ~
         article_large:
             quality: 90
             filters:
                 thumbnail:
                     size: [1200, 800]
-                    mode: outbound
+                    mode: inset
                 strip: ~  # Remove metadata to reduce file size

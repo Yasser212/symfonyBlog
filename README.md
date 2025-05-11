@@ -115,11 +115,15 @@ Edit `src/Entity/Article.php`:
 
 namespace App\Entity;
 
-use App\Repository\ArticleRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\ArticleRepository;
+use Symfony\Component\HttpFoundation\File\File;
+use Vich\UploaderBundle\Mapping\Annotation as Vich;
 
 #[ORM\Entity(repositoryClass: ArticleRepository::class)]
+#[ORM\Table(name: 'article')]
+#[Vich\Uploadable]
 class Article
 {
     #[ORM\Id]
@@ -133,11 +137,22 @@ class Article
     #[ORM\Column(type: Types::TEXT)]
     private ?string $content = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: true)]
     private ?string $image_path = null;
+
+    #[Vich\UploadableField(mapping: 'article_images', fileNameProperty: 'image_path')]
+    private ?File $imageFile = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $created_at = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $updatedAt = null;
+
+    public function __construct()
+    {
+        $this->created_at = new \DateTimeImmutable();
+    }
 
     public function getId(): ?int
     {
@@ -152,7 +167,6 @@ class Article
     public function setTitle(string $title): static
     {
         $this->title = $title;
-
         return $this;
     }
 
@@ -164,7 +178,6 @@ class Article
     public function setContent(string $content): static
     {
         $this->content = $content;
-
         return $this;
     }
 
@@ -173,10 +186,9 @@ class Article
         return $this->image_path;
     }
 
-    public function setImagePath(string $image_path): static
+    public function setImagePath(?string $image_path): static
     {
         $this->image_path = $image_path;
-
         return $this;
     }
 
@@ -188,7 +200,33 @@ class Article
     public function setCreatedAt(\DateTimeImmutable $created_at): static
     {
         $this->created_at = $created_at;
+        return $this;
+    }
 
+    public function getImageFile(): ?File
+    {
+        return $this->imageFile;
+    }
+
+    public function setImageFile(?File $imageFile = null): void
+    {
+        $this->imageFile = $imageFile;
+        
+        if ($imageFile) {
+            // It's required to update the updatedAt property when a new file is uploaded
+            // This is needed for VichUploaderBundle to detect the change
+            $this->updatedAt = new \DateTimeImmutable();
+        }
+    }
+
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
         return $this;
     }
 }
@@ -235,25 +273,38 @@ Edit `config/packages/liip_imagine.yaml`:
 
 ```yaml
 liip_imagine:
+    # Use GD, imagick, or gmagick (GD is default and sufficient for most cases)
+    driver: "gd"
+
+    # Configure resolvers for caching
     resolvers:
         default:
-            web_path: ~
+            web_path:
+                web_root: "%kernel.project_dir%/public"
+                cache_prefix: "media/cache"
+
+
     filter_sets:
-        article_thumbnail:
+        index_card:
+            quality: 85
             filters:
-                thumbnail: { size: [100, 100], mode: inset }
-        article_index:
+                thumbnail:
+                    size: [600, 400]
+                    mode: inset
+                strip: ~
+        article_large:
+            quality: 90
             filters:
-                thumbnail: { size: [300, 200], mode: inset }
-        article_page:
-            filters:
-                thumbnail: { size: [600, 400], mode: inset }
+                thumbnail:
+                    size: [1200, 800]
+                    mode: inset
+                strip: ~  # Remove metadata to reduce file size
+
 ```
 
 - **Explanation**:
-  - `article_thumbnail`: 100x100px for small previews.
-  - `article_index`: 300x200px for article listings.
-  - `article_page`: 600x400px for full article views.
+  - `index_card`: 600x400px for article listings.
+  - `article_large`: 1200x800px for full article views.
   - `mode: inset`: Preserves aspect ratio, fits within specified dimensions.
 
 ## Image Processing Filters Guide
@@ -477,8 +528,12 @@ namespace App\Form;
 
 use App\Entity\Article;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\File;
 use Vich\UploaderBundle\Form\Type\VichImageType;
 
 class ArticleType extends AbstractType
@@ -486,14 +541,24 @@ class ArticleType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
-            ->add('title')
-            ->add('content')
+            ->add('title', TextType::class, [
+                'label' => 'Title',
+                'attr' => ['placeholder' => 'Enter article title'],
+            ])
+            ->add('content', TextareaType::class, [
+                'label' => 'Content',
+                'attr' => ['placeholder' => 'Enter article content', 'rows' => 10],
+            ])
             ->add('imageFile', VichImageType::class, [
+                'label' => 'Image',
                 'required' => false,
                 'allow_delete' => true,
-                'download_uri' => false,
+                'delete_label' => 'Delete image',
+                'download_label' => 'Download image',
+                'download_uri' => true,
                 'image_uri' => true,
-                'label' => 'Article Image',
+                'imagine_pattern' => 'index_card',
+                'asset_helper' => true,
             ]);
     }
 
@@ -527,44 +592,57 @@ namespace App\Controller;
 
 use App\Entity\Article;
 use App\Form\ArticleType;
+use App\Repository\ArticleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
-#[Route('/article')]
 class ArticleController extends AbstractController
 {
-    #[Route('/new', name: 'article_new')]
-    public function new(Request $request, EntityManagerInterface $em): Response
+    #[Route('/', name: 'article_index')]
+    public function index(ArticleRepository $articleRepository): Response
+    {
+        $articles = $articleRepository->findRecentArticles();
+        return $this->render('article/index.html.twig', [
+            'articles' => $articles,
+        ]);
+    }
+
+    #[Route('/article/new', name: 'article_new', methods: ['GET'])]
+    public function showNewForm(): Response
+    {
+        $article = new Article();
+        $form = $this->createForm(ArticleType::class, $article);
+        
+        return $this->render('article/new.html.twig', [
+            'form' => $form->createView(),
+        ]);
+    }
+    
+    #[Route('/article/new', name: 'article_create', methods: ['POST'])]
+    public function createArticle(Request $request, EntityManagerInterface $entityManager): Response
     {
         $article = new Article();
         $form = $this->createForm(ArticleType::class, $article);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $em->persist($article);
-            $em->flush();
+            $entityManager->persist($article);
+            $entityManager->flush();
+            
             $this->addFlash('success', 'Article created successfully.');
             return $this->redirectToRoute('article_index');
         }
-
+        
+        // If form validation failed, render the form again with errors
         return $this->render('article/new.html.twig', [
             'form' => $form->createView(),
         ]);
     }
 
-    #[Route('/', name: 'article_index')]
-    public function index(EntityManagerInterface $em): Response
-    {
-        $articles = $em->getRepository(Article::class)->findAll();
-        return $this->render('article/index.html.twig', [
-            'articles' => $articles,
-        ]);
-    }
-
-    #[Route('/{id}', name: 'article_show')]
+    #[Route('/article/{id}', name: 'article_show')]
     public function show(Article $article): Response
     {
         return $this->render('article/show.html.twig', [
@@ -579,17 +657,43 @@ Create `templates/article/new.html.twig`:
 ```twig
 {% extends 'base.html.twig' %}
 
-{% block title %}New Article{% endblock %}
+{% block title %}Create New Article - Symfony Blog{% endblock %}
 
 {% block body %}
-    <h1>Create New Article</h1>
-
-    {{ form_start(form) }}
-        {{ form_row(form.title) }}
-        {{ form_row(form.content) }}
-        {{ form_row(form.imageFile) }}
-        <button type="submit" class="btn btn-primary">Create</button>
-    {{ form_end(form) %}
+	<section class="py-12 bg-gray-100">
+		<div class="container mx-auto px-4">
+			<h1 class="text-4xl font-bold text-gray-800 mb-8 text-center animate-fade-in">Create New Article</h1>
+			<div class="max-w-lg mx-auto bg-white rounded-lg shadow-lg p-8 transform transition-transform hover:shadow-xl">
+				{{ form_start(form, {'attr': {'class': 'space-y-6', 'enctype': 'multipart/form-data', 'method': 'POST', 'id': 'article-form'}}) }}
+				{{ form_row(form.title, {
+                        'attr': {
+                            'class': 'w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors',
+                            'placeholder': 'Enter article title'
+                        }
+                    }) }}
+				{{ form_row(form.content, {
+                        'attr': {
+                            'class': 'w-full p-3 border border-gray-300 rounded-lg h-40 resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors',
+                            'placeholder': 'Write your article content here...'
+                        }
+                    }) }}
+				{{ form_row(form.imageFile, {
+                        'attr': {
+                            'class': 'block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer'
+                        }
+                    }) }}
+				<div class="flex justify-center space-x-4">
+					<button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-blue-500 transition-transform transform hover:scale-105">
+						Create Article
+					</button>
+					<a href="{{ path('article_index') }}" class="px-6 py-3 text-blue-600 font-semibold hover:underline">
+						Back to Articles
+					</a>
+				</div>
+				{{ form_end(form)}}
+			</div>
+		</div>
+	</section>
 {% endblock %}
 ```
 
@@ -598,22 +702,39 @@ Create `templates/article/index.html.twig`:
 ```twig
 {% extends 'base.html.twig' %}
 
-{% block title %}Articles{% endblock %}
+{% block title %}Blog - Symfony Blog
+{% endblock %}
 
 {% block body %}
-    <h1>Articles</h1>
-
-    {% for article in articles %}
-        <div>
-            <h2>{{ article.title }}</h2>
-            {% if article.image %}
-                <img src="{{ article.image|imagine_filter('article_index') }}" alt="{{ article.title }}">
-            {% endif %}
-            <p>{{ article.content|slice(0, 100) }}...</p>
-            <a href="{{ path('article_show', {'id': article.id}) }}">Read more</a>
-        </div>
-    {% endfor %}
+	<h1 class="text-3xl font-bold mb-8 text-center animate-fade-in">Blog Articles</h1>
+	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+		{% for article in articles %}
+			<article class="bg-white shadow-lg rounded-lg p-3 hover:shadow-xl transition-shadow">
+				<a href="{{ path('article_show', {'id': article.id}) }}" class="cursor-pointer">
+					{% if article.imagePath %}
+						<img src="{{ vich_uploader_asset(article, 'imageFile')|imagine_filter('index_card') }}" alt="{{ article.title }}" class="w-full h-48 object-cover rounded-lg mb-4">
+					{% else %}
+						<div class="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+							<span class="text-gray-500">No Image</span>
+						</div>
+					{% endif %}
+					<h2 class="text-xl font-semibold mb-2">
+						<a href="{{ path('article_show', {'id': article.id}) }}" class="text-blue-600 hover:underline">{{ article.title }}</a>
+					</h2>
+					<p class="text-gray-600 mb-2">{{ article.content|slice(0, 100) ~ '...' }}</p>
+					<div class="text-sm text-gray-500">
+						<p>Posted on
+							{{ article.createdAt|date('F j, Y') }}</p>
+					</div>
+					<a href="{{ path('article_show', {'id': article.id}) }}" class="text-blue-500 hover:underline">Read More →</a>
+				</a>
+			</article>
+		{% else %}
+			<p class="text-center col-span-full">No articles found.</p>
+		{% endfor %}
+	</div>
 {% endblock %}
+
 ```
 
 Create `templates/article/show.html.twig`:
@@ -621,16 +742,21 @@ Create `templates/article/show.html.twig`:
 ```twig
 {% extends 'base.html.twig' %}
 
-{% block title %}{{ article.title }}{% endblock %}
+{% block title %}{{ article.title }} - Symfony Blog{% endblock %}
 
 {% block body %}
-    <h1>{{ article.title }}</h1>
-
-    {% if article.image %}
-        <img src="{{ article.image|imagine_filter('article_page') }}" alt="{{ article.title }}">
-    {% endif %}
-    <p>{{ article.content }}</p>
-    <p>By {{ article.author.username }} on {{ article.createdAt|date('Y-m-d') }}</p>
+    <article class="bg-white shadow-lg rounded-lg p-8 max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold mb-6 text-gray-900">{{ article.title }}</h1>
+        <div class="flex items-center text-gray-600 mb-6">
+            <p>Posted on {{ article.createdAt|date('F j, Y') }}</p>
+        </div>
+        {% if article.imagePath %}
+            <img src="{{ vich_uploader_asset(article, 'imageFile')|imagine_filter('article_large') }}" alt="{{ article.title }}" class="w-full h-96 object-cover rounded-lg mb-6">
+        {% endif %}
+        <div class="prose max-w-none">
+            {{ article.content|raw }}
+        </div>
+    </article>
 {% endblock %}
 ```
 
@@ -638,23 +764,64 @@ Create a base template `templates/base.html.twig`:
 
 ```twig
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Welcome!{% endblock %}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    {% block stylesheets %}{% endblock %}
+    <title>{% block title %}Symfony Blog{% endblock %}</title>
+    {% block stylesheets %}
+        <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    {% endblock %}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body>
-    <div class="container">
-        {% for message in app.flashes('success') %}
-            <div class="alert alert-success">{{ message }}</div>
-        {% endfor %}
+<body class="font-sans antialiased bg-gray-100 text-gray-900">
+    <header class="sticky top-0 z-50 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center justify-between py-4 px-6">
+            <div class="text-2xl font-bold tracking-tight">
+                <a href="{{ path('article_index') }}" class="hover:text-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white">Symfony Blog</a>
+            </div>
+            <button id="menu-toggler" class="md:hidden focus:outline-none focus:ring-2 focus:ring-white" aria-label="Toggle navigation menu" aria-expanded="false">
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <nav id="menu" class="hidden md:flex md:items-center md:space-x-6 absolute md:static top-full left-0 w-full md:w-auto p-4 md:p-0 bg-blue-600 md:bg-transparent transition-all duration-300">
+                <a href="{{ path('article_new') }}" class="block md:inline-block py-2 px-4 rounded-full bg-blue-500 hover:bg-blue-400 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white">Add Article</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto mt-8 px-4">
         {% block body %}{% endblock %}
-    </div>
-    {% block javascripts %}{% endblock %}
+    </main>
+
+    <footer class="bg-gray-900 text-gray-300 py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p>© {{ 'now'|date('Y') }} Symfony Blog. All rights reserved.</p>
+            <p class="mt-2">
+                Built with
+                <a href="https://symfony.com" class="text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-400">Symfony</a>
+                &
+                <a href="https://tailwindcss.com" class="text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-400">Tailwind CSS</a>.
+            </p>
+        </div>
+    </footer>
+
+    {% block javascripts %}
+        <script>
+            const toggler = document.getElementById('menu-toggler');
+            const menu = document.getElementById('menu');
+
+            toggler.addEventListener('click', () => {
+                menu.classList.toggle('hidden');
+                const expanded = toggler.getAttribute('aria-expanded') === 'true';
+                toggler.setAttribute('aria-expanded', !expanded);
+            });
+        </script>
+    {% endblock %}
+    {{ encore_entry_script_tags('app') }}
 </body>
 </html>
+
 ```
 
 ### Image Management Details
