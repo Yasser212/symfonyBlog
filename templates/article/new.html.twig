@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Create New Article - Symfony Blog{% endblock %}
+
+{% block body %}
+	<section class="py-12 bg-gray-100">
+		<div class="container mx-auto px-4">
+			<h1 class="text-4xl font-bold text-gray-800 mb-8 text-center animate-fade-in">Create New Article</h1>
+			<div class="max-w-lg mx-auto bg-white rounded-lg shadow-lg p-8 transform transition-transform hover:shadow-xl">
+				{{ form_start(form, {'attr': {'class': 'space-y-6', 'enctype': 'multipart/form-data', 'method': 'POST', 'id': 'article-form'}}) }}
+				{{ form_row(form.title, {
+                        'attr': {
+                            'class': 'w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors',
+                            'placeholder': 'Enter article title'
+                        }
+                    }) }}
+				{{ form_row(form.content, {
+                        'attr': {
+                            'class': 'w-full p-3 border border-gray-300 rounded-lg h-40 resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors',
+                            'placeholder': 'Write your article content here...'
+                        }
+                    }) }}
+				{{ form_row(form.imageFile, {
+                        'attr': {
+                            'class': 'block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer'
+                        }
+                    }) }}
+				<div class="flex justify-center space-x-4">
+					<button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-blue-500 transition-transform transform hover:scale-105">
+						Create Article
+					</button>
+					<a href="{{ path('article_index') }}" class="px-6 py-3 text-blue-600 font-semibold hover:underline">
+						Back to Articles
+					</a>
+				</div>
+				{{ form_end(form)}}
+			</div>
+		</div>
+	</section>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ article.title }} - Symfony Blog{% endblock %}
+
+{% block body %}
+    <article class="bg-white shadow-lg rounded-lg p-8 max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold mb-6 text-gray-900">{{ article.title }}</h1>
+        <div class="flex items-center text-gray-600 mb-6">
+            <p>Posted on {{ article.createdAt|date('F j, Y') }}</p>
+        </div>
+        {% if article.imagePath %}
+            <img src="{{ vich_uploader_asset(article, 'imageFile')|imagine_filter('article_large') }}" alt="{{ article.title }}" class="w-full h-96 object-cover rounded-lg mb-6">
+        {% endif %}
+        <div class="prose max-w-none">
+            {{ article.content|raw }}
+        </div>
+    </article>
+{% endblock %}

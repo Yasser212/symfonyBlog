@@ -20,50 +20,55 @@ cd blog
 ### Installing Essential Bundles
 We'll install bundles one by one, explaining their purpose:
 
-1. **Doctrine ORM** (`symfony/orm-pack`): Provides database integration and entity management.
+1. **Doctrine ORM** `(symfony/orm-pack)`: Provides database integration and entity management.
    ```bash
    composer require symfony/orm-pack
    ```
 
-2. **Maker Bundle** (`symfony/maker-bundle`): Simplifies generating controllers, entities, and forms.
+2. **Maker Bundle** `(symfony/maker-bundle)`: Simplifies generating controllers, entities, and forms.
    ```bash
    composer require --dev symfony/maker-bundle
    ```
 
-3. **Twig** (`symfony/twig-pack`): Template engine for rendering views.
+3. **Twig** `(symfony/twig-pack)`: Template engine for rendering views.
    ```bash
    composer require symfony/twig-pack
    ```
 
-4. **Security** (`symfony/security-bundle`): Handles user authentication and authorization.
+4. **Security** `(symfony/security-bundle)`: Handles user authentication and authorization.
    ```bash
    composer require symfony/security-bundle
    ```
 
-5. **VichUploaderBundle** (`vich/uploader-bundle`): Manages file uploads, particularly images, with integration for Doctrine entities.
+5. **VichUploaderBundle** `(vich/uploader-bundle)`: Manages file uploads, particularly images, with integration for Doctrine entities.
    ```bash
    composer require vich/uploader-bundle
    ```
 
-6. **Validator** (`symfony/validator`): Validates form inputs, including image file constraints (e.g., size, mime type).
+6. **Validator** `(symfony/validator)`: Validates form inputs, including image file constraints (.g., size, mime type).
    ```bash
    composer require symfony/validator
    ```
 
-7. **LiipImagineBundle** (`liip/imagine-bundle`): Processes images to create resized versions (e.g., thumbnails, article images).
+7. **LiipImagineBundle** `(liip/imagine-bundle)`: Processes images to create resized versions (e.g., thumbnails, article images).
    ```bash
    composer require liip/imagine-bundle
    ```
 
-8. **Forms**:
+8. **Forms** : Provides form handling and rendering functionality.
    ```bash
    composer require form     
    ```
 
-9. **TailwindBundle** (`symfonycasts/tailwind-bundle`):
+9. **TailwindBundle** `(symfonycasts/tailwind-bundle)`: Integrates Tailwind CSS into Symfony for modern, utility-first styling.
    ```bash
    composer require symfonycasts/tailwind-bundle
    ```
+
+10. **Asset Component** `(symfony/asset)` : Manages asset URLs (e.g., images, CSS, JS) in templates and supports versioning and base path configuration.
+    ```bash
+    composer require symfony/asset
+    ```
 
 ### Configure the Database
 Edit `.env` to set your database connection:

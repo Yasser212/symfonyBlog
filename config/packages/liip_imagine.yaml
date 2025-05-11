@@ -1,15 +1,28 @@
 # Documentation on how to configure the bundle can be found at: https://symfony.com/doc/current/bundles/LiipImagineBundle/basic-usage.html
 liip_imagine:
+    # Use GD, imagick, or gmagick (GD is default and sufficient for most cases)
+    driver: "gd"
+
+    # Configure resolvers for caching
     resolvers:
         default:
-            web_path: ~
+            web_path:
+                web_root: "%kernel.project_dir%/public"
+                cache_prefix: "media/cache"
+
+
     filter_sets:
-        article_thumbnail:
+        index_card:
+            quality: 85
             filters:
-                thumbnail: { size: [100, 100], mode: inset }
-        article_index:
+                thumbnail:
+                    size: [600, 400]
+                    mode: outbound
+                strip: ~
+        article_large:
+            quality: 90
             filters:
-                thumbnail: { size: [300, 200], mode: inset }
-        article_page:
-            filters:
-                thumbnail: { size: [600, 400], mode: inset }
+                thumbnail:
+                    size: [1200, 800]
+                    mode: outbound
+                strip: ~  # Remove metadata to reduce file size

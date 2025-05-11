@@ -1,17 +1,58 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Symfony Blog{% endblock %}</title>
+    {% block stylesheets %}
+        <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    {% endblock %}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body class="font-sans antialiased bg-gray-100 text-gray-900">
+    <header class="sticky top-0 z-50 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center justify-between py-4 px-6">
+            <div class="text-2xl font-bold tracking-tight">
+                <a href="{{ path('article_index') }}" class="hover:text-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-white">Symfony Blog</a>
+            </div>
+            <button id="menu-toggler" class="md:hidden focus:outline-none focus:ring-2 focus:ring-white" aria-label="Toggle navigation menu" aria-expanded="false">
+                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <nav id="menu" class="hidden md:flex md:items-center md:space-x-6 absolute md:static top-full left-0 w-full md:w-auto p-4 md:p-0 bg-blue-600 md:bg-transparent transition-all duration-300">
+                <a href="{{ path('article_new') }}" class="block md:inline-block py-2 px-4 rounded-full bg-blue-500 hover:bg-blue-400 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white">Add Article</a>
+            </nav>
+        </div>
+    </header>
 
-        {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
-        {% endblock %}
-    </head>
-    <body>
+    <main class="max-w-7xl mx-auto mt-8 px-4">
         {% block body %}{% endblock %}
-    </body>
+    </main>
+
+    <footer class="bg-gray-900 text-gray-300 py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p>© {{ 'now'|date('Y') }} Symfony Blog. All rights reserved.</p>
+            <p class="mt-2">
+                Built with
+                <a href="https://symfony.com" class="text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-400">Symfony</a>
+                &
+                <a href="https://tailwindcss.com" class="text-blue-400 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-400">Tailwind CSS</a>.
+            </p>
+        </div>
+    </footer>
+
+    {% block javascripts %}
+        <script>
+            const toggler = document.getElementById('menu-toggler');
+            const menu = document.getElementById('menu');
+
+            toggler.addEventListener('click', () => {
+                menu.classList.toggle('hidden');
+                const expanded = toggler.getAttribute('aria-expanded') === 'true';
+                toggler.setAttribute('aria-expanded', !expanded);
+            });
+        </script>
+    {% endblock %}
+    {{ encore_entry_script_tags('app') }}
+</body>
 </html>
