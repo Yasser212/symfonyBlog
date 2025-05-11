@@ -1,6 +1,6 @@
 # Symfony 7 Blog Tutorial: Building a Blog with Advanced Image Management
 
-This tutorial guides you through creating a simple blog application using **Symfony 7**, with a strong focus on managing images for user profiles and articles. We'll start with a Symfony skeleton project, install necessary bundles, design a database, create entities, and implement robust image management using **VichUploaderBundle**, **Validator**, and **LiipImagineBundle**. The image management section covers uploading, validating, storing, and displaying images in multiple sizes (thumbnails, article page, index page).
+Creating a simple blog application using **Symfony 7**, with a strong focus on managing images for articles. We'll start with a Symfony skeleton project, install necessary bundles, design a database, create entity, and implement robust image management using **VichUploaderBundle**, **Validator**, and **LiipImagineBundle**. The image management section covers uploading, validating, storing, and displaying images in multiple sizes (thumbnails, article page, index page).
 
 ## Prerequisites
 - PHP 8.2 or higher
@@ -842,10 +842,6 @@ Create a base template `templates/base.html.twig`:
    ```bash
    symfony server:start
    ```
-2. Register a user (implement a registration form using `make:registration-form` if needed).
-3. Edit the user profile at `/user/edit/{id}` to upload a profile image.
-4. Create articles at `/article/new` to upload article images.
-5. View articles at `/article/` (index) and `/article/{id}` (show) to see images in different sizes.
 
-## Conclusion
-This tutorial demonstrated how to build a Symfony 7 blog with robust image management. By using **VichUploaderBundle** for uploads, **Validator** for input validation, and **LiipImagineBundle** for image resizing, we created a scalable system for handling user profile and article images. The application supports multiple image sizes, ensuring optimal display for thumbnails, index pages, and article pages.
+1. Create articles at `/article/new` to upload article images.
+2. View articles at `/article/` (index) and `/article/{id}` (show) to see images in different sizes.
