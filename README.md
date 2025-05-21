@@ -72,6 +72,13 @@ We'll install bundles one by one, explaining their purpose:
 
 ### Configure Tailwind
 
+```bash
+php bin/console tailwind:init  
+php bin/console tailwind:build -w
+```
+
+# or manualy:
+
 ## add to tailwind.config.js to the root folder:
 ```js
 /** @type {import('tailwindcss').Config} */
