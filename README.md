@@ -35,40 +35,36 @@ We'll install bundles one by one, explaining their purpose:
    composer require symfony/twig-pack
    ```
 
-4. **Security** `(symfony/security-bundle)`: Handles user authentication and authorization.
-   ```bash
-   composer require symfony/security-bundle
-   ```
-
-5. **VichUploaderBundle** `(vich/uploader-bundle)`: Manages file uploads, particularly images, with integration for Doctrine entities.
+4. **VichUploaderBundle** `(vich/uploader-bundle)`: Manages file uploads, particularly images, with integration for Doctrine entities.
    ```bash
    composer require vich/uploader-bundle
    ```
 
-6. **Validator** `(symfony/validator)`: Validates form inputs, including image file constraints (.g., size, mime type).
+5. **Validator** `(symfony/validator)`: Validates form inputs, including image file constraints (.g., size, mime type).
    ```bash
    composer require symfony/validator
    ```
 
-7. **LiipImagineBundle** `(liip/imagine-bundle)`: Processes images to create resized versions (e.g., thumbnails, article images).
+6. **LiipImagineBundle** `(liip/imagine-bundle)`: Processes images to create resized versions (e.g., thumbnails, article images).
    ```bash
    composer require liip/imagine-bundle
    ```
 
-8. **Forms** : Provides form handling and rendering functionality.
+7. **Forms** : Provides form handling and rendering functionality.
    ```bash
    composer require form     
    ```
+   
+8. **Asset Component** `(symfony/asset)` : Manages asset URLs (e.g., images, CSS, JS) in templates and supports versioning and base path configuration.
+    ```bash
+    composer require symfony/asset
+    ```
 
 9. **TailwindBundle** `(symfonycasts/tailwind-bundle)`: Integrates Tailwind CSS into Symfony for modern, utility-first styling.
    ```bash
    composer require symfonycasts/tailwind-bundle
    ```
 
-10. **Asset Component** `(symfony/asset)` : Manages asset URLs (e.g., images, CSS, JS) in templates and supports versioning and base path configuration.
-    ```bash
-    composer require symfony/asset
-    ```
 
 ### Configure Tailwind
 
@@ -340,212 +336,6 @@ liip_imagine:
   - `article_large`: 1200x800px for full article views.
   - `mode: inset`: Preserves aspect ratio, fits within specified dimensions.
 
-## Image Processing Filters Guide ###(Optional - from Liip_imagine docu.)
-
-This part provides a detailed explanation of common image processing filters, including their purpose, parameters, examples, and use cases. Each filter is part of a configuration for an image processing pipeline (e.g., ImageMagick, CMS, or custom tool). An additional useful filter is also included.
-
----
-
-### 1. Scales Proportionally
-
-**Filter**: `scale`
-
-- **Purpose**: Resizes an image to specific dimensions while maintaining the aspect ratio. The image is scaled to fit within the specified dimensions without stretching.
-- **Parameters**:
-  - `dim`: `[width, height]` specifying target dimensions.
-- **Behavior**: Scales the image so either width or height matches the target, adjusting the other dimension to preserve the aspect ratio. The output may not exactly match the specified dimensions but will fit within them.
-- **Example**:
-  ```yaml
-  filters:
-    scale:
-      dim: [300, 200]
-  ```
-- **Scenario**: A 600x400 image (3:2 aspect ratio) is resized to 300x200 (exact match). For a 600x600 image, scaling to `[300, 200]` results in 200x200 (height constrained to 200, width adjusted for 1:1 aspect ratio).
-- **Use Case**: Creating thumbnails for a gallery where images must fit within a 300x200 box without distortion.
-- **Visual Example**:
-  - Original: 600x400 → Scaled: 300x200.
-  - Original: 600x600 → Scaled: 200x200.
-
----
-
-### 2. Crop a Specific Region
-
-**Filter**: `crop`
-
-- **Purpose**: Extracts a rectangular region from the image, discarding the rest.
-- **Parameters**:
-  - `start`: `[x, y]` specifying the top-left corner of the crop region.
-  - `size`: `[width, height]` specifying the dimensions of the crop region.
-- **Behavior**: Cuts out the specified region. If the crop exceeds image boundaries, it may fail or pad the output (tool-dependent).
-- **Example**:
-  ```yaml
-  filters:
-    crop:
-      start: [0, 0]
-      size: [100, 100]
-  ```
-- **Scenario**: A 500x500 image is cropped to a 100x100 square from the top-left corner, resulting in a 100x100 image.
-- **Use Case**: Isolating a specific part of an image, like a logo or a detected face.
-- **Visual Example**:
-  - Original: 500x500.
-  - Crop `[0, 0], [100, 100]`: 100x100 top-left region.
-- **Note**: Ensure the crop region fits within the image to avoid errors.
-
----
-
-### 3. Rotate the Image
-
-**Filter**: `rotate`
-
-- **Purpose**: Rotates the image by a specified angle (in degrees).
-- **Parameters**:
-  - A value (e.g., `90`) indicating the rotation angle (clockwise).
-- **Behavior**: Rotates the image around its center. The canvas may expand, and background areas may be filled (e.g., with transparency or a solid color).
-- **Example**:
-  ```yaml
-  filters:
-    rotate: 90
-  ```
-- **Scenario**: A 400x600 portrait image is rotated 90° clockwise, resulting in a 600x400 landscape image.
-- **Use Case**: Correcting photo orientation or creating rotated versions for design.
-- **Visual Example**:
-  - Original: 400x600 portrait.
-  - Rotated 90°: 600x400 landscape.
-- **Note**: Non-90/180/270° rotations may require handling non-rectangular bounding boxes.
-
----
-
-### 4. Removes Metadata
-
-**Filter**: `strip`
-
-- **Purpose**: Removes metadata (e.g., EXIF, ICC profiles) to reduce file size and enhance privacy.
-- **Parameters**:
-  - None (`~` in YAML indicates empty/default configuration).
-- **Behavior**: Strips all metadata (e.g., camera details, GPS) while preserving visual content.
-- **Example**:
-  ```yaml
-  filters:
-    strip: ~
-  ```
-- **Scenario**: A 2MB JPEG with EXIF data (camera, GPS) is reduced to 1.8MB by removing metadata.
-- **Use Case**: Preparing images for web upload to minimize file size and protect privacy.
-- **Visual Example**:
-  - Original: JPEG with EXIF (camera: Canon, GPS: 40.7128°N, 74.0060°W).
-  - Stripped: Same image, no metadata.
-- **Note**: Stripping metadata doesn't affect quality but may remove useful data (e.g., color profiles).
-
----
-
-### 5. Set Image Interlacing for Better Loading on Web
-
-**Filter**: `interlace`
-
-- **Purpose**: Enables interlacing for progressive loading on web pages (low-resolution preview first, then full detail).
-- **Parameters**:
-  - `mode`: Interlacing method (e.g., `line` for JPEG/PNG, `plane` for PNG, `partition` for JPEG).
-- **Behavior**: Reorders pixel data so browsers display a coarse version before full download, improving perceived loading speed.
-- **Example**:
-  ```yaml
-  filters:
-    interlace:
-      mode: line
-  ```
-- **Scenario**: A 1920x1080 JPEG loads as a blurry preview first, refining over seconds.
-- **Use Case**: Optimizing large images for websites to improve user experience on slow connections.
-- **Visual Example**:
-  - Non-interlaced: Loads top-to-bottom, incomplete during download.
-  - Interlaced (`line`): Loads as low-res preview, gradually sharpening.
-- **Note**: Interlacing may slightly increase file size for some formats (e.g., PNG).
-
----
-
-### 6. Resize While Maintaining Proportions
-
-**Filter**: `relative_resize`
-
-- **Purpose**: Resizes the image by a scaling factor relative to its original size, preserving the aspect ratio.
-- **Parameters**:
-  - `scale`: A float (e.g., `0.5` for 50%, `2.0` for 200%).
-- **Behavior**: Multiplies width and height by the scale factor.
-- **Example**:
-  ```yaml
-  filters:
-    relative_resize:
-      scale: 0.5
-  ```
-- **Scenario**: A 1000x800 image is scaled by `0.5`, resulting in 500x400.
-- **Use Case**: Generating smaller images for responsive web design or email attachments.
-- **Visual Example**:
-  - Original: 1000x800.
-  - Scaled (`0.5`): 500x400.
-- **Note**: Ideal for consistent scaling across multiple images.
-
----
-
-### Additional Useful Filter: Convert Image Format
-
-**Filter**: `convert`
-
-- **Purpose**: Changes the image file format (e.g., JPEG to PNG, PNG to WebP).
-- **Parameters**:
-  - `format`: Target format (`jpeg`, `png`, `webp`, `gif`).
-  - Optional: `quality` (e.g., `80` for JPEG/WebP compression).
-- **Behavior**: Converts to the specified format, applying format-specific compression. Reduces file size, improves compatibility, or enables features like transparency.
-- **Example**:
-  ```yaml
-  filters:
-    convert:
-      format: webp
-      quality: 80
-  ```
-- **Scenario**: A 2MB PNG is converted to a 500KB WebP, maintaining quality and transparency.
-- **Use Case**: Optimizing for modern websites (WebP offers better compression) or ensuring compatibility (e.g., JPEG for email).
-- **Visual Example**:
-  - Original: 1920x1080 PNG (2MB).
-  - Converted: 1920x1080 WebP (500KB).
-- **Why It's Useful**: WebP/AVIF reduce load times; JPEG ensures compatibility.
-- **Note**: Ensure the target format supports features (e.g., JPEG lacks transparency).
-
----
-
-### Example Pipeline
-
-Chaining filters for complex transformations:
-
-```yaml
-filters:
-  relative_resize:
-    scale: 0.5
-  crop:
-    start: [50, 50]
-    size: [200, 200]
-  rotate: 90
-  convert:
-    format: webp
-    quality: 80
-  strip: ~
-  interlace:
-    mode: line
-```
-
-- **Input**: 1000x800 PNG (2MB).
-- **Steps**:
-  1. `relative_resize: 0.5` → 500x400.
-  2. `crop: [50, 50], [200, 200]` → 200x200.
-  3. `rotate: 90` → 200x200 (rotated).
-  4. `convert: webp, quality: 80` → WebP format.
-  5. `strip: ~` → Removes metadata.
-  6. `interlace: line` → Enables progressive loading.
-- **Output**: 200x200 WebP (~50KB), web-optimized.
-
----
-
-### Notes
-
-- **Order Matters**: Filter order affects results (e.g., `crop` before `resize`).
-- **Tool Dependency**: Syntax/behavior varies by library (e.g., ImageMagick, GD). Check documentation.
-- **Testing**: Test filters on sample images to verify output.
 
 ### Create Article Form
 ```bash
@@ -907,19 +697,7 @@ Create a base template `templates/base.html.twig`:
 
 ```
 
-### Image Management Details
-- **Uploading**: Handled by `VichImageType` in forms, which integrates with VichUploaderBundle to store files in `public/uploads/`.
-- **Validation**: Symfony Validator’s `#[Assert\Image]` ensures only JPEG/PNG files under specified sizes (2MB for profiles, 5MB for articles) are accepted.
-- **Storage**: Images are stored in `public/uploads/profile_images` and `public/uploads/article_images` with unique filenames generated by `UniqidNamer`.
-- **Displaying Multiple Sizes**: LiipImagineBundle creates resized images on-the-fly using defined filter sets (`profile_thumbnail`, `article_index`, etc.). The `imagine_filter` Twig filter applies these transformations.
-- **Performance**: LiipImagineBundle caches resized images to reduce server load. Ensure your server has write permissions for the cache directory (`var/cache`).
-
-### Security Considerations
-- Restrict upload directories to prevent execution of malicious files (e.g., add `.htaccess` for Apache).
-- Validate file types and sizes strictly to prevent abuse.
-- Sanitize filenames to avoid directory traversal attacks.
-
-## Step 5: Testing the Application
+## Testing the Application
 1. Start the Symfony server:
    ```bash
    symfony server:start
