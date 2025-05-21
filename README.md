@@ -70,6 +70,31 @@ We'll install bundles one by one, explaining their purpose:
     composer require symfony/asset
     ```
 
+### Configure Tailwind
+
+## add to tailwind.config.js to the root folder:
+```js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./assets/**/*.js",
+    "./templates/**/*.html.twig",
+    "./vendor/symfony/twig-bridge/Resources/views/Form/*.html.twig",
+  ],
+  theme: {
+  },
+  plugins: [
+  ],
+}
+```
+## add this to assets/styles/app.css
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+
 ### Configure the Database
 Edit `.env` to set your database connection:
 
@@ -520,7 +545,7 @@ filters:
 php bin/console make:form ArticleType
 ```
 
-Edit `src/Form/ArticleType.php`:
+Edit `src/Form/ArticleTypeForm.php`:
 
 ```php
 <?php
@@ -537,7 +562,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\File;
 use Vich\UploaderBundle\Form\Type\VichImageType;
 
-class ArticleType extends AbstractType
+class ArticleTypeForm extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
@@ -642,7 +667,7 @@ Edit `src/Controller/ArticleController.php`:
 namespace App\Controller;
 
 use App\Entity\Article;
-use App\Form\ArticleType;
+use App\Form\ArticleTypeForm;
 use App\Repository\ArticleRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -665,7 +690,7 @@ class ArticleController extends AbstractController
     public function showNewForm(): Response
     {
         $article = new Article();
-        $form = $this->createForm(ArticleType::class, $article);
+        $form = $this->createForm(ArticleTypeForm::class, $article);
         
         return $this->render('article/new.html.twig', [
             'form' => $form->createView(),
@@ -676,7 +701,7 @@ class ArticleController extends AbstractController
     public function createArticle(Request $request, EntityManagerInterface $entityManager): Response
     {
         $article = new Article();
-        $form = $this->createForm(ArticleType::class, $article);
+        $form = $this->createForm(ArticleTypeForm::class, $article);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
