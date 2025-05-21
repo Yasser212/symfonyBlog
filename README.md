@@ -308,7 +308,7 @@ liip_imagine:
   - `article_large`: 1200x800px for full article views.
   - `mode: inset`: Preserves aspect ratio, fits within specified dimensions.
 
-## Image Processing Filters Guide
+## Image Processing Filters Guide ###(Optional - from Liip_imagine docu.)
 
 This part provides a detailed explanation of common image processing filters, including their purpose, parameters, examples, and use cases. Each filter is part of a configuration for an image processing pipeline (e.g., ImageMagick, CMS, or custom tool). An additional useful filter is also included.
 
@@ -577,6 +577,56 @@ class ArticleType extends AbstractType
   - `required: false`: Images are optional.
   - `allow_delete`: Allows removing the uploaded image.
   - Validation is handled by the `#[Assert\Image]` constraints in the entities.
+
+#### Create Article Repository
+```php
+<?php
+
+namespace App\Repository;
+
+use App\Entity\Article;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+
+/**
+ * @extends ServiceEntityRepository<Article>
+ */
+class ArticleRepository extends ServiceEntityRepository
+{
+    public function __construct(ManagerRegistry $registry)
+    {
+        parent::__construct($registry, Article::class);
+    }
+
+    /**
+     * Find all articles ordered by creation date (newest first).
+     *
+     * @return Article[]
+     */
+    public function findRecentArticles(): array
+    {
+        return $this->createQueryBuilder('a')
+            ->orderBy('a.created_at', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find an article by ID.
+     *
+     * @param int $id
+     * @return Article|null
+     */
+    public function findOneById(int $id): ?Article
+    {
+        return $this->createQueryBuilder('a')
+            ->andWhere('a.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+}
+```
 
 ### Create Controller and Views
 #### Article Controller
