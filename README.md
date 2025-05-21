@@ -77,7 +77,7 @@ php bin/console tailwind:init
 php bin/console tailwind:build -w
 ```
 
-# or manualy:
+# or manually:
 
 ## add to tailwind.config.js to the root folder:
 ```js
